@@ -1,8 +1,8 @@
 # misp2clickhouse
 
-Tool to extract IoCs from MISP with a specific filter and insert them into a clickhouse database
+Tool to extract IoCs from MISP with a specific filter and insert them into a clickhouse database.
 
-This allows fairly easy discovery of appearance of IoCs in netflow data.
+This allows fairly easy discovery of appearance of IoCs in netflow data. Use [nfdump2clickhouse](https://github.com/poorting/nfdump2clickhouse) to insert flow data into clickhouse. 
 ## iocs table
 The table specified in the misp2ch.conf file ('nfsen.iocs' by default) has the following schema:
 
