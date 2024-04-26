@@ -283,7 +283,7 @@ def main():
         if uuid not in exist_uuids:
             iocs.append(attr_dict[uuid])
 
-    logger.info(f'{len(iocs)} IoC attributes to insert')
+    logger.info(f'{len(iocs)} IoCs to insert')
     if len(iocs) > 0:
         # Rework the IoCs into an insert statement
         iocs_str = [f"({ioc['ts']}, '{ioc['misp']}', '{ioc['uuid']}', '{ioc['event_uuid']}', '{ioc['event_id']}', '{ioc['ip']}', {ioc['port']}, '{ioc['info']}')" for ioc in iocs]
