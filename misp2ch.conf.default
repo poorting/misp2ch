@@ -4,8 +4,11 @@ misp_fqdn = misp-test.org.tld
 # Set to false for a self-signed certificate (only for testing!)
 verify_tls = True
 token = api-token-here
+
 # returnFormat:json, type:ip-dst|port and to_ids:1 are set automatically (and forcefully)
-json_req = {"tags":"bladibla","last":"3d"}
+json_req = {"last":"3d"}
+# more specific IoCs can be retrieved by specificying tags, e.g.
+# json_req = {"tags":"bladibla","last":"3d"}
 
 [clickhouse]
 # db.table to store the IoCs in
