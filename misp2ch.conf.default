@@ -11,6 +11,7 @@ json_req = {"tags":"bladibla","last":"3d"}
 # db.table to store the IoCs in
 ch_db_tbl = nfsen.iocs
 
-# If set to false then older IoCs are deleted
+# If set to false then older IoCs are NOT deleted
 # (ones no longer appearing in the list from the MISP)
+# Default behaviour is to delete older IoCs
 ; remove_old = False
