@@ -47,10 +47,11 @@ The scrip will provide info on what it is doing. If you want more details add `-
 By running this script at regular intervals, the iocs table will be kept up to date with the MISP. This can be done automatically via a cron job such as this:
 
 ```
-
+20 * * * * /<path_to_misp2ch>/venv/bin/python /<path_to_misp2ch>/misp2ch.py -c /<path_to_misp2ch>/misp2ch.conf -l /<path_to_misp2ch>/misp2ch.log
 ```
+Which will run the script every 20 minutes past the hour.
+By adding the `-l <path/to/logfile>`, the output of the script will be added to the logfile specified.
 
-By adding `-l <path/to/logfile>` the output of the script will be added to the logfile specified.
-
+Of course the configuration and log file need not be in the same location as the script itself.
 
 ## Discovering IoCs in netflow data
