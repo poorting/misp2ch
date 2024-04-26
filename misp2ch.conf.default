@@ -9,7 +9,7 @@ json_req = {"tags":"bladibla","last":"3d"}
 
 [clickhouse]
 # db.table to store the IoCs in
-ch_db_tbl = nfsen.iocs_geant
+ch_db_tbl = nfsen.iocs
 
 # If set to false then older IoCs are deleted
 # (ones no longer appearing in the list from the MISP)
