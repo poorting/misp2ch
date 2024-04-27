@@ -1,8 +1,8 @@
 # misp2clickhouse
 
-Tool to extract IoCs from MISP with a specific filter and insert them into a clickhouse database
+Tool to extract IoCs from MISP with a specific filter and insert them into a clickhouse database.
 
-This allows fairly easy discovery of appearance of IoCs in netflow data.
+This allows fairly easy discovery of appearance of IoCs in netflow data. Use [nfdump2clickhouse](https://github.com/poorting/nfdump2clickhouse) to insert flow data into clickhouse. 
 ## iocs table
 The table specified in the misp2ch.conf file ('nfsen.iocs' by default) has the following schema:
 
@@ -22,9 +22,9 @@ The table specified in the misp2ch.conf file ('nfsen.iocs' by default) has the f
 
 1. Creates the nfsen.iocs table if it does not exist already
 2. Retrieve IoCs (attributes) of type `ip-dst|port` from MISP that have `to_ids` set. 
-   - Limit this further e.g. by adding a tag to `json_req` in the conf file.
+   - Limit this further e.g. by adding a tag to `json_req` in the conf file, e.g.`json_req = {"tags":"my_tag","last":"3d"}`
 4. Delete all IoCs from the table which are not present in the  list from MISP (remove older IoCs).
-   - Can be disabled by setting `remove_old = False` in the conf file, e.g.`json_req = {"tags":"my_tag","last":"3d"}`
+   - Can be disabled by setting `remove_old = False` in the conf file.
 5. Add those IoCs to the table that are not there already (add new ones)
 
 See `misp2.conf.default` for an example of a configuration file and which entries need to be in there.
@@ -41,7 +41,7 @@ The script needs to be started with a configuration file as a parameter, e.g.
 ```
 ./misp2ch.py -c misp2ch.conf
 ```
-The scrip will provide info on what it is doing. If you want more details add `--debug` as a parameter.
+The script will provide info on what it is doing. If you want more details add `--debug` as a parameter.
 
 
 By running this script at regular intervals, the iocs table will be kept up to date with the MISP. This can be done automatically via a cron job such as this:
