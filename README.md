@@ -55,3 +55,91 @@ By adding the `-l <path/to/logfile>`, the output of the script will be added to 
 Of course the configuration and log file need not be in the same location as the script itself.
 
 ## Discovering IoCs in netflow data
+
+### Direct query
+To check whether there are flows that 'hit' an IoC use an SQL query such as:
+
+```
+SELECT ts, sa, da, dp, ipkt, ibyt, event_id, info FROM nfsen.flows INNER JOIN nfsen.iocs ON (flows.da = iocs.ip) AND (flows.dp = iocs.port) WHERE ts > now() - toIntervalDay(7);
+```
+This query shows all those flows over the past 7 days. Of course you can also use a fixed starting date, useful if you check every so often and want to search from the point where the last search ended.
+
+```
+SELECT ts, sa, da, dp, ipkt, ibyt, event_id, info FROM nfsen.flows INNER JOIN nfsen.iocs ON (flows.da = iocs.ip) AND (flows.dp = iocs.port) WHERE ts > '2024-04-01 00:00:00';
+```
+### Materialized Views
+
+It's also possible to let ClickHouse check for IoCs automatically by using [materialized views](https://clickhouse.com/docs/en/guides/developer/cascading-materialized-views).
+
+First create a table for holding the results:
+```
+use nfsen
+
+CREATE TABLE nfsen.ioc_hits
+(
+    `misp` String,
+    `source_ip` String,
+    `destination_ip` String,
+    `dp` UInt16,
+    `pkt` UInt64,
+    `byt` UInt64,
+    `reverse` UInt8,
+    `event_uuid` String,
+    `id` UInt32,
+    `attr_uuid` String,
+    `ts` DateTime,
+    `te` DateTime,
+    `info` String
+)
+ENGINE = MergeTree
+PARTITION BY tuple()
+PRIMARY KEY (ts, source_ip)
+ORDER BY (ts, source_ip)
+TTL te + toIntervalDay(90);
+```
+
+Then create the materialized views, one for the normal flows and one for the reverse (since nfdump2clickhouse inserts raw flows they are unidirectional).
+
+```
+CREATE MATERIALIZED VIEW nfsen.ioc_hits_mv TO nfsen.ioc_hits
+AS SELECT
+    misp,
+    sa AS source_ip,
+    da AS destination_ip,
+    dp,
+    ipkt AS pkt,
+    ibyt AS byt,
+    0 AS reverse,
+    event_uuid,
+    event_id AS id,
+    uuid AS attr_uuid,
+    ts,
+    te,
+    info
+FROM nfsen.flows
+INNER JOIN nfsen.iocs ON (flows.da = iocs.ip) AND (flows.dp = iocs.port);
+
+CREATE MATERIALIZED VIEW nfsen.ioc_hits_rev_mv TO nfsen.ioc_hits
+AS SELECT
+    misp,
+    da AS source_ip,
+    sa AS destination_ip,
+    sp AS dp,
+    ipkt AS pkt,
+    ibyt AS byt,
+    1 AS reverse,
+    event_uuid,
+    event_id AS id,
+    uuid AS attr_uuid,
+    ts,
+    te,
+    info
+FROM nfsen.flows
+INNER JOIN nfsen.iocs ON (flows.sa = iocs.ip) AND (flows.sp = iocs.port);
+```
+
+The ioc_hits table will now automatically be updated whenever a new flow meets the criteria of the SQL query.
+To check for IoC hits you only need to check the ioc_hits table every now and then and see if there are any new entries.
+
+**_Please note that only new flows will be evaluated. Adding a new IoC will (therefore) not lead to re-evaluation of existing flow data!_ 
+This means you have to check manually if you want to evaluate new IoCs against existing flow data!**
