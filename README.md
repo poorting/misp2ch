@@ -56,7 +56,7 @@ Of course the configuration and log file need not be in the same location as the
 
 ## Discovering IoCs in netflow data
 
-### Direct query
+### Manual query
 To check whether there are flows that 'hit' an IoC use an SQL query such as:
 
 ```
