@@ -182,6 +182,7 @@ def main():
                 ip String,
                 port UInt16 DEFAULT 0,
                 info String DEFAULT '',
+                insert_ts TIMESTAMP DEFAULT now(),
             )
             ENGINE = MergeTree
             PARTITION BY tuple()
