@@ -128,7 +128,7 @@ def parser_add_arguments():
 
 
 # ------------------------------------------------------------------------------
-def create_tables(client, ch_db_iocs, ch_db_hits, ch_db_flows):
+def create_tables(logger, client, ch_db_iocs, ch_db_hits, ch_db_flows):
 
     try:
         tbl_create = f"""
@@ -203,19 +203,19 @@ def create_tables(client, ch_db_iocs, ch_db_hits, ch_db_flows):
                 `info` String
             )
             AS SELECT
-                misp,
-                sa AS source_ip,
-                da AS destination_ip,
-                dp,
-                ipkt AS pkt,
-                ibyt AS byt,
+                {ch_db_iocs}.misp,
+                {ch_db_flows}.sa AS source_ip,
+                {ch_db_flows}.da AS destination_ip,
+                {ch_db_flows}.dp as dp,
+                {ch_db_flows}.ipkt AS pkt,
+                {ch_db_flows}.ibyt AS byt,
                 0 AS reverse,
-                event_uuid,
-                event_id AS id,
-                uuid AS attr_uuid,
-                ts,
-                te,
-                info
+                {ch_db_iocs}.event_uuid,
+                {ch_db_iocs}.event_id AS id,
+                {ch_db_iocs}.uuid AS attr_uuid,
+                {ch_db_flows}.ts,
+                {ch_db_flows}.te,
+                {ch_db_iocs}.info
             FROM {ch_db_flows}
             INNER JOIN {ch_db_iocs} ON ({ch_db_flows}.da = {ch_db_iocs}.ip) AND ({ch_db_flows}.dp = {ch_db_iocs}.port)
         """
@@ -243,19 +243,19 @@ def create_tables(client, ch_db_iocs, ch_db_hits, ch_db_flows):
                 `info` String
             )
             AS SELECT
-                misp,
-                da AS source_ip,
-                sa AS destination_ip,
-                sp AS dp,
-                ipkt AS pkt,
-                ibyt AS byt,
+                {ch_db_iocs}.misp,
+                {ch_db_flows}.da AS source_ip,
+                {ch_db_flows}.sa AS destination_ip,
+                {ch_db_flows}.sp AS dp,
+                {ch_db_flows}.ipkt AS pkt,
+                {ch_db_flows}.ibyt AS byt,
                 1 AS reverse,
-                event_uuid,
-                event_id AS id,
-                uuid AS attr_uuid,
-                ts,
-                te,
-                info
+                {ch_db_iocs}.event_uuid,
+                {ch_db_iocs}.event_id AS id,
+                {ch_db_iocs}.uuid AS attr_uuid,
+                {ch_db_flows}.ts,
+                {ch_db_flows}.te,
+                {ch_db_iocs}.info
             FROM {ch_db_flows}
             INNER JOIN {ch_db_iocs} ON ({ch_db_flows}.sa = {ch_db_iocs}.ip) AND ({ch_db_flows}.sp = {ch_db_iocs}.port)
         """
@@ -265,7 +265,7 @@ def create_tables(client, ch_db_iocs, ch_db_hits, ch_db_flows):
         exit(3)
 
 
-def do_backscan(client, ch_db_flows, ch_db_iocs, ch_db_hits, backscan, misp):
+def do_backscan(logger, client, ch_db_flows, ch_db_iocs, ch_db_hits, backscan, misp):
     try:
         sql = f"""
             INSERT INTO {ch_db_hits} (misp, source_ip, destination_ip, dp, pkt, byt, reverse, event_uuid, id, attr_uuid, ts, te, info)
@@ -340,7 +340,7 @@ def main():
     # Create database and table if they do not already exist
     client = clickhouse_driver.Client(host='localhost',  settings={'use_numpy': False})
 
-    create_tables(client, ch_db_iocs, ch_db_hits, ch_db_flows)
+    create_tables(logger, client, ch_db_iocs, ch_db_hits, ch_db_flows)
 
     # Retrieve IoCs from the misp server if possible
     logger.debug(f"Retrieving IoCs from https://{misp_fqdn}")
@@ -442,7 +442,7 @@ def main():
 
         # See if we need to do a backscan
         if backscan>0:
-            do_backscan(client, ch_db_flows, ch_db_iocs, ch_db_hits, backscan, misp_fqdn)
+            do_backscan(logger, client, ch_db_flows, ch_db_iocs, ch_db_hits, backscan, misp_fqdn)
 
 
 ###############################################################################
