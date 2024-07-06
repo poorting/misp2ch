@@ -402,7 +402,7 @@ def main():
     # print(json.dumps(attr_dict))
 
     # Retrieve all existing IoCs from the database (for this misp)
-    sqlq = f"select uuid from {ch_db_tbl} where misp='{misp_fqdn}'"
+    sqlq = f"select uuid from {ch_db_iocs} where misp='{misp_fqdn}'"
     results = client.execute(sqlq)
     exist_uuids = [result[0] for result in results]
     logger.info(f"{len(exist_uuids)} existing IoCs in {ch_db_tbl}")
@@ -420,7 +420,7 @@ def main():
                 end = len(del_uuids)
             logger.debug(f"deleting IoCs [{i}:{end}] for {misp_fqdn} from {ch_db_tbl}")
             uuidstr = "','".join(del_uuids[i:end])
-            sqlq = f"alter table {ch_db_tbl} delete where misp='{misp_fqdn}' and uuid in ('{uuidstr}')"
+            sqlq = f"alter table {ch_db_iocs} delete where misp='{misp_fqdn}' and uuid in ('{uuidstr}')"
             client.execute(sqlq)
     else:
         logger.info("Configured not to remove outdated IoCs")
