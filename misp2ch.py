@@ -436,7 +436,7 @@ def main():
     if len(iocs) > 0:
         # Rework the IoCs into an insert statement
         iocs_str = [f"({ioc['ts']}, '{ioc['misp']}', '{ioc['uuid']}', '{ioc['event_uuid']}', '{ioc['event_id']}', '{ioc['ip']}', {ioc['port']}, '{ioc['info']}')" for ioc in iocs]
-        sqlq = f'INSERT INTO {ch_db_tbl} (ts, misp, uuid, event_uuid, event_id, ip, port, info) VALUES '+','.join(iocs_str)
+        sqlq = f'INSERT INTO {ch_db_iocs} (ts, misp, uuid, event_uuid, event_id, ip, port, info) VALUES '+','.join(iocs_str)
         # print(sqlq)
         client.execute(sqlq)
 
