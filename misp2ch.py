@@ -322,8 +322,8 @@ def main():
         verify_tls = bool(config['misp'].getboolean('verify_tls', True))
         json_req = config['misp'].get('json_req', '{}')
         ch_db_iocs = config['clickhouse'].get('ch_db_iocs', 'nfsen.iocs')
-        ch_db_hits = config['clickhouse'].get('ch_db_iocs', 'nfsen.ioc_hits')
-        ch_db_flows = config['clickhouse'].get('ch_db_iocs', 'nfsen.flows')
+        ch_db_hits = config['clickhouse'].get('ch_db_hits', 'nfsen.ioc_hits')
+        ch_db_flows = config['clickhouse'].get('ch_db_flows', 'nfsen.flows')
         ch_remove_old = bool(config['clickhouse'].getboolean('remove_old', True))
         backscan = int(config['clickhouse'].get('backscan', 0))
     except KeyError:
