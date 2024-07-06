@@ -290,10 +290,7 @@ def do_backscan(logger, client, ch_db_flows, ch_db_iocs, ch_db_hits, backscan, m
             WHERE {ch_db_flows}.ts>now()-toIntervalDay({backscan}) and {ch_db_iocs}.misp='{misp}' AND {ch_db_iocs}.insert_ts>now()-toIntervalMinute(5) and {ch_db_flows}.da = {ch_db_iocs}.ip AND {ch_db_flows}.dp = {ch_db_iocs}.port and {ch_db_flows}.ts<{ch_db_iocs}.insert_ts and {ch_db_flows}.ts>{ch_db_iocs}.insert_ts-toIntervalDay({backscan});
         """
 
-        print(sql)
-
         res = client.execute(sql)
-        pp.pprint(res)
     except Exception as e:
         logger.error(e)
 
