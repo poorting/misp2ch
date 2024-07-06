@@ -127,6 +127,173 @@ def parser_add_arguments():
     return parser
 
 
+# ------------------------------------------------------------------------------
+def create_tables(client, ch_db_iocs, ch_db_hits, ch_db_flows):
+
+    try:
+        tbl_create = f"""
+            CREATE TABLE IF NOT EXISTS {ch_db_iocs}
+            (
+                ts TIMESTAMP,
+                misp String,
+                uuid String,
+                event_uuid String,
+                event_id UInt32,
+                ip String,
+                port UInt16 DEFAULT 0,
+                info String DEFAULT '',
+                insert_ts TIMESTAMP DEFAULT now(),
+            )
+            ENGINE = MergeTree
+            PARTITION BY tuple()
+            PRIMARY KEY (ip, port)
+            ORDER BY (ip, port) 
+        """
+        res = client.execute(tbl_create)
+    except Exception as e:
+        logger.error(e)
+        exit(3)
+
+    try:
+        tbl_create = f"""
+            CREATE TABLE IF NOT EXISTS {ch_db_hits}
+            (
+                `misp` String,
+                `source_ip` String,
+                `destination_ip` String,
+                `dp` UInt16,
+                `pkt` UInt64,
+                `byt` UInt64,
+                `reverse` UInt8,
+                `event_uuid` String,
+                `id` UInt32,
+                `attr_uuid` String,
+                `ts` DateTime,
+                `te` DateTime,
+                `info` String,
+                `insert_ts` TIMESTAMP DEFAULT now(),
+            )
+            ENGINE = MergeTree
+            PARTITION BY tuple()
+            PRIMARY KEY (ts, source_ip)
+            ORDER BY (ts, source_ip)
+            TTL te + toIntervalDay(90)
+        """
+        res = client.execute(tbl_create)
+    except Exception as e:
+        logger.error(e)
+        exit(3)
+
+    try:
+        tbl_create = f"""
+            CREATE MATERIALIZED VIEW IF NOT EXISTS {ch_db_hits}_mv TO {ch_db_hits}
+            (
+                `misp` String,
+                `source_ip` String,
+                `destination_ip` String,
+                `dp` UInt16,
+                `pkt` UInt64,
+                `byt` UInt64,
+                `reverse` UInt8,
+                `event_uuid` String,
+                `id` UInt32,
+                `attr_uuid` String,
+                `ts` DateTime,
+                `te` DateTime,
+                `info` String
+            )
+            AS SELECT
+                misp,
+                sa AS source_ip,
+                da AS destination_ip,
+                dp,
+                ipkt AS pkt,
+                ibyt AS byt,
+                0 AS reverse,
+                event_uuid,
+                event_id AS id,
+                uuid AS attr_uuid,
+                ts,
+                te,
+                info
+            FROM {ch_db_flows}
+            INNER JOIN {ch_db_iocs} ON ({ch_db_flows}.da = {ch_db_iocs}.ip) AND ({ch_db_flows}.dp = {ch_db_iocs}.port)
+        """
+        res = client.execute(tbl_create)
+    except Exception as e:
+        logger.error(e)
+        exit(3)
+
+    try:
+        tbl_create = f"""
+            CREATE MATERIALIZED VIEW IF NOT EXISTS {ch_db_hits}_rev_mv TO {ch_db_hits}
+            (
+                `misp` String,
+                `source_ip` String,
+                `destination_ip` String,
+                `dp` UInt16,
+                `pkt` UInt64,
+                `byt` UInt64,
+                `reverse` UInt8,
+                `event_uuid` String,
+                `id` UInt32,
+                `attr_uuid` String,
+                `ts` DateTime,
+                `te` DateTime,
+                `info` String
+            )
+            AS SELECT
+                misp,
+                da AS source_ip,
+                sa AS destination_ip,
+                sp AS dp,
+                ipkt AS pkt,
+                ibyt AS byt,
+                1 AS reverse,
+                event_uuid,
+                event_id AS id,
+                uuid AS attr_uuid,
+                ts,
+                te,
+                info
+            FROM {ch_db_flows}
+            INNER JOIN {ch_db_iocs} ON ({ch_db_flows}.sa = {ch_db_iocs}.ip) AND ({ch_db_flows}.sp = {ch_db_iocs}.port)
+        """
+        res = client.execute(tbl_create)
+    except Exception as e:
+        logger.error(e)
+        exit(3)
+
+
+def do_backscan(client, ch_db_flows, ch_db_iocs, ch_db_hits, backscan, misp):
+    try:
+        sql = f"""
+            INSERT INTO {ch_db_hits} (misp, source_ip, destination_ip, dp, pkt, byt, reverse, event_uuid, id, attr_uuid, ts, te, info)
+            SELECT
+                {ch_db_iocs}.misp,
+                {ch_db_flows}.sa AS source_ip,
+                {ch_db_flows}.da AS destination_ip,
+                {ch_db_flows}.dp,
+                {ch_db_flows}.ipkt AS pkt,
+                {ch_db_flows}.ibyt AS byt,
+                0 AS reverse,
+                {ch_db_iocs}.event_uuid as event_uuid,
+                {ch_db_iocs}.event_id AS id,
+                {ch_db_iocs}.uuid AS attr_uuid,
+                {ch_db_flows}.ts,
+                {ch_db_flows}.te,
+                {ch_db_iocs}.info
+            FROM {ch_db_flows}, {ch_db_iocs}
+            WHERE {ch_db_flows}.ts>now()-toIntervalDay({backscan}) and {ch_db_iocs}.misp='{misp}' AND {ch_db_iocs}.insert_ts>now()-toIntervalMinute(5) and {ch_db_flows}.da = {ch_db_iocs}.ip AND {ch_db_flows}.dp = {ch_db_iocs}.port and {ch_db_flows}.ts<{ch_db_iocs}.insert_ts and {ch_db_flows}.ts>{ch_db_iocs}.insert_ts-toIntervalDay({backscan});
+        """
+
+        print(sql)
+
+        res = client.execute(sql)
+    except Exception as e:
+        logger.error(e)
+
+
 ###############################################################################
 def main():
 
@@ -152,10 +319,13 @@ def main():
     try:
         misp_fqdn = config['misp']['misp_fqdn']
         token = config['misp']['token']
-        verify_tls = config['misp'].getboolean('verify_tls', True)
+        verify_tls = bool(config['misp'].getboolean('verify_tls', True))
         json_req = config['misp'].get('json_req', '{}')
-        ch_db_tbl = config['clickhouse'].get('ch_db_tbl', 'nfsen.iocs')
-        ch_remove_old = config['clickhouse'].getboolean('remove_old', True)
+        ch_db_iocs = config['clickhouse'].get('ch_db_iocs', 'nfsen.iocs')
+        ch_db_hits = config['clickhouse'].get('ch_db_iocs', 'nfsen.ioc_hits')
+        ch_db_flows = config['clickhouse'].get('ch_db_iocs', 'nfsen.flows')
+        ch_remove_old = bool(config['clickhouse'].getboolean('remove_old', True))
+        backscan = int(config['clickhouse'].get('backscan', 0))
     except KeyError:
         logger.error("Missing configuration items")
         exit(1)
@@ -170,29 +340,7 @@ def main():
     # Create database and table if they do not already exist
     client = clickhouse_driver.Client(host='localhost',  settings={'use_numpy': False})
 
-    try:
-        tbl_create = f"""
-            CREATE TABLE IF NOT EXISTS {ch_db_tbl}
-            (
-                ts TIMESTAMP,
-                misp String,
-                uuid String,
-                event_uuid String,
-                event_id UInt32,
-                ip String,
-                port UInt16 DEFAULT 0,
-                info String DEFAULT '',
-                insert_ts TIMESTAMP DEFAULT now(),
-            )
-            ENGINE = MergeTree
-            PARTITION BY tuple()
-            PRIMARY KEY (ip, port)
-            ORDER BY (ip, port) 
-        """
-        res = client.execute(tbl_create)
-    except Exception as e:
-        logger.error(e)
-        exit(3)
+    create_tables(client, ch_db_iocs, ch_db_hits, ch_db_flows)
 
     # Retrieve IoCs from the misp server if possible
     logger.debug(f"Retrieving IoCs from https://{misp_fqdn}")
@@ -291,6 +439,10 @@ def main():
         sqlq = f'INSERT INTO {ch_db_tbl} (ts, misp, uuid, event_uuid, event_id, ip, port, info) VALUES '+','.join(iocs_str)
         # print(sqlq)
         client.execute(sqlq)
+
+        # See if we need to do a backscan
+        if backscan>0:
+            do_backscan(client, ch_db_flows, ch_db_iocs, ch_db_hits, backscan, misp_fqdn)
 
 
 ###############################################################################

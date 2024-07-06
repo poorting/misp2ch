@@ -12,9 +12,18 @@ json_req = {"last":"3d"}
 
 [clickhouse]
 # db.table to store the IoCs in
-ch_db_tbl = nfsen.iocs
+ch_db_iocs = nfsen.iocs
+# db.table to store the detected IoCs in
+ch_db_hits = nfsen.ioc_hits
+# The db.table containing flow information
+ch_db_flows = nfsen.flows
+
 
 # If set to false then older IoCs are NOT deleted
 # (ones no longer appearing in the list from the MISP)
 # Default behaviour is to delete older IoCs
 ; remove_old = False
+
+# How many days to look back for IoC occurrences
+# 0 disables backscan (the default).
+; backscan = 0
