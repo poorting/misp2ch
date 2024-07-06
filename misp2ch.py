@@ -266,6 +266,9 @@ def create_tables(logger, client, ch_db_iocs, ch_db_hits, ch_db_flows):
 
 
 def do_backscan(logger, client, ch_db_flows, ch_db_iocs, ch_db_hits, backscan, misp):
+
+    pp = pprint.PrettyPrinter(indent=4)
+
     try:
         sql = f"""
             INSERT INTO {ch_db_hits} (misp, source_ip, destination_ip, dp, pkt, byt, reverse, event_uuid, id, attr_uuid, ts, te, info)
@@ -290,6 +293,7 @@ def do_backscan(logger, client, ch_db_flows, ch_db_iocs, ch_db_hits, backscan, m
         print(sql)
 
         res = client.execute(sql)
+        pp.pprint(res)
     except Exception as e:
         logger.error(e)
 
