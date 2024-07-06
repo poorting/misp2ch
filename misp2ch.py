@@ -405,7 +405,7 @@ def main():
     sqlq = f"select uuid from {ch_db_iocs} where misp='{misp_fqdn}'"
     results = client.execute(sqlq)
     exist_uuids = [result[0] for result in results]
-    logger.info(f"{len(exist_uuids)} existing IoCs in {ch_db_tbl}")
+    logger.info(f"{len(exist_uuids)} existing IoCs in {ch_db_iocs}")
 
     attr_uuids = list(attr_dict.keys())
 
@@ -418,7 +418,7 @@ def main():
             end = i+5000
             if end>len(del_uuids):
                 end = len(del_uuids)
-            logger.debug(f"deleting IoCs [{i}:{end}] for {misp_fqdn} from {ch_db_tbl}")
+            logger.debug(f"deleting IoCs [{i}:{end}] for {misp_fqdn} from {ch_db_iocs}")
             uuidstr = "','".join(del_uuids[i:end])
             sqlq = f"alter table {ch_db_iocs} delete where misp='{misp_fqdn}' and uuid in ('{uuidstr}')"
             client.execute(sqlq)
