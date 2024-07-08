@@ -290,8 +290,7 @@ def do_backscan(logger, client, ch_db_flows, ch_db_iocs, ch_db_hits, backscan, m
             FROM {ch_db_flows}, {ch_db_iocs}
             WHERE {ch_db_flows}.ts>now()-toIntervalDay({backscan}) AND {ch_db_iocs}.misp='{misp}' 
             AND {ch_db_iocs}.insert_ts>now()-toIntervalMinute(5) AND {ch_db_flows}.da = {ch_db_iocs}.ip 
-            AND {ch_db_flows}.dp = {ch_db_iocs}.port AND {ch_db_flows}.ts<{ch_db_iocs}.insert_ts 
-            AND {ch_db_flows}.ts>{ch_db_iocs}.insert_ts-toIntervalDay({backscan});
+            AND {ch_db_flows}.dp = {ch_db_iocs}.port AND {ch_db_flows}.ts<{ch_db_iocs}.insert_ts;
         """
 
         res = client.execute(sql)
