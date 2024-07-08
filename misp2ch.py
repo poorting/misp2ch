@@ -292,8 +292,12 @@ def do_backscan(logger, client, ch_db_flows, ch_db_iocs, ch_db_hits, backscan, m
             AND {ch_db_iocs}.insert_ts>now()-toIntervalMinute(5) AND {ch_db_flows}.da = {ch_db_iocs}.ip 
             AND {ch_db_flows}.dp = {ch_db_iocs}.port AND {ch_db_flows}.ts<{ch_db_iocs}.insert_ts;
         """
-
+        logger.info(f"Scanning back for {backscan} days")
+        start = time.time()
         res = client.execute(sql)
+        duration = time.time()-start
+        logger.info(f"Backscan took {duration:.2f} seconds")
+
     except Exception as e:
         logger.error(e)
 
